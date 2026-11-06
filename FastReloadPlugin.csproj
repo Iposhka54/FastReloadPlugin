@@ -6,8 +6,20 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PluginDeployDir Condition="'$(PluginDeployDir)' == ''">C:\cs2server\game\csgo\addons\counterstrikesharp\plugins\$(AssemblyName)</PluginDeployDir>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="CounterStrikeSharp.API" Version="1.0.379" />
   </ItemGroup>
+
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(PluginDeployDir)' != ''">
+    <ItemGroup>
+      <PluginFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)$(AssemblyName).deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginDeployDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="Плагин скопирован в $(PluginDeployDir)" />
+  </Target>
 
 </Project>
