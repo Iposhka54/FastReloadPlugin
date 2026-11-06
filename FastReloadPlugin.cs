@@ -8,7 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FastReloadPlugin;
 
-public class FastReloadPlugin : BasePlugin
+// partial — часть класса лежит в VipMenu.cs
+public partial class FastReloadPlugin : BasePlugin
 {
   public override string ModuleName => "FastReload";
   public override string ModuleVersion => "0.1.0";
@@ -44,6 +45,8 @@ public class FastReloadPlugin : BasePlugin
     AddCommand("css_bhop", "Toggle auto-bhop", OnBhopCommand);
     AddCommand("css_fastreload", "Toggle fast reload", OnFastReloadCommand);
     AddCommand("css_fastreload_config", "Reload FastReload config.json", OnReloadConfigCommand);
+    RegisterVipMenu();
+    RegisterNoSpread();
 
     RegisterListener<Listeners.OnTick>(OnTickForBhop);
     RegisterListener<Listeners.OnTick>(OnTickForReload);
@@ -99,7 +102,7 @@ public class FastReloadPlugin : BasePlugin
     commandInfo.ReplyToCommand("[FastReload] Конфиг перечитан");
   }
 
-  private static bool IsAllowed(CCSPlayerController player, FeatureConfig feature)
+  private static bool IsAllowed(CCSPlayerController player, AccessConfig feature)
   {
     if (!feature.Enabled) return false;
 
@@ -141,17 +144,26 @@ public class FastReloadPlugin : BasePlugin
   private void OnBhopCommand(CCSPlayerController? player, CommandInfo commandInfo)
   {
     if (player == null || !player.IsValid) return;
+    ToggleBhop(player);
+  }
 
+  private void OnFastReloadCommand(CCSPlayerController? player, CommandInfo commandInfo)
+  {
+    if (player == null || !player.IsValid) return;
+    ToggleFastReload(player);
+  }
+
+  // вынесено из команд, чтобы то же самое вызывать из меню
+  private void ToggleBhop(CCSPlayerController player)
+  {
     var newState = Toggle(player, _bhopEnabled, _config.Bhop, "Bhop");
     if (newState == null) return;
 
     player.PrintToChat($" {ChatColors.Green}[Bhop]{(newState.Value ? " Включён" : " Выключен")}");
   }
 
-  private void OnFastReloadCommand(CCSPlayerController? player, CommandInfo commandInfo)
+  private void ToggleFastReload(CCSPlayerController player)
   {
-    if (player == null || !player.IsValid) return;
-
     var newState = Toggle(player, _fastReloadEnabled, _config.FastReload, "FastReload");
     if (newState == null) return;
 
@@ -260,13 +272,19 @@ public class FastReloadPlugin : BasePlugin
 
   public override void Unload(bool hotReload)
   {
+    UnhookGetInaccuracy();
+
     foreach (var player in Utilities.GetPlayers())
     {
-      if (player.IsValid && !player.IsBot) SetActiveWeaponRate(player, DefaultRate);
+      if (!player.IsValid || player.IsBot) continue;
+
+      SetActiveWeaponRate(player, DefaultRate);
+      if (IsNoSpreadActive(player)) SyncClientConVars(player, false);
     }
 
     _bhopEnabled.Clear();
     _fastReloadEnabled.Clear();
+    _noSpreadEnabled.Clear();
     _shortenedTo.Clear();
   }
 }
